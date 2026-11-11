@@ -16,12 +16,18 @@ final class TVDiscovery: ObservableObject {
     @Published private(set) var isScanning = false
     @Published private(set) var message: String?
 
-    func scan() async {
+    /// Common home-router ranges, used if the phone's own address can't be read.
+    /// (Bell Home Hub uses 192.168.2.x; Rogers/most others use 192.168.0.x or 1.x; some use 10.0.0.x.)
+    private static let fallbackPrefixes = ["192.168.2", "192.168.0", "192.168.1", "10.0.0"]
+
+    func scan(knownIP: String? = nil) async {
         guard !isScanning else { return }
-        guard let prefix = Self.localSubnetPrefix() else {
-            message = "Connect your iPhone to Wi‑Fi first."
-            return
+
+        var prefixes = Self.localSubnetPrefixes()
+        if let knownIP, let prefix = Self.prefix(of: knownIP), !prefixes.contains(prefix) {
+            prefixes.append(prefix)
         }
+        if prefixes.isEmpty { prefixes = Self.fallbackPrefixes }
 
         isScanning = true
         message = nil
@@ -33,9 +39,11 @@ final class TVDiscovery: ObservableObject {
         let session = URLSession(configuration: config)
 
         let results: [DiscoveredTV] = await withTaskGroup(of: DiscoveredTV?.self) { group in
-            for host in 1...254 {
-                let ip = "\(prefix).\(host)"
-                group.addTask { await TVDiscovery.probe(ip: ip, session: session) }
+            for prefix in prefixes {
+                for host in 1...254 {
+                    let ip = "\(prefix).\(host)"
+                    group.addTask { await TVDiscovery.probe(ip: ip, session: session) }
+                }
             }
             var tvs: [DiscoveredTV] = []
             for await tv in group {
@@ -66,25 +74,43 @@ final class TVDiscovery: ObservableObject {
         return DiscoveredTV(ip: ip, name: name)
     }
 
-    /// Returns the first three parts of the phone's Wi‑Fi IP, e.g. "192.168.1".
-    nonisolated static func localSubnetPrefix() -> String? {
+    nonisolated static func prefix(of ip: String) -> String? {
+        let octets = ip.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ".")
+        guard octets.count == 4, octets.allSatisfy({ UInt8($0) != nil }) else { return nil }
+        return octets[0..<3].joined(separator: ".")
+    }
+
+    /// The first three parts of every private (home-network) IPv4 address the phone has,
+    /// e.g. ["192.168.2"]. Skips cellular (pdp_ip), VPN (utun/ipsec) and loopback interfaces.
+    nonisolated static func localSubnetPrefixes() -> [String] {
         var ifaddr: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return nil }
+        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else { return [] }
         defer { freeifaddrs(ifaddr) }
 
+        var prefixes: [String] = []
         for pointer in sequence(first: first, next: { $0.pointee.ifa_next }) {
             let interface = pointer.pointee
+            let name = String(cString: interface.ifa_name)
+            let flags = Int32(interface.ifa_flags)
             guard let address = interface.ifa_addr,
                   address.pointee.sa_family == UInt8(AF_INET),
-                  String(cString: interface.ifa_name) == "en0" else { continue }
+                  flags & IFF_UP != 0, flags & IFF_LOOPBACK == 0,
+                  !name.hasPrefix("pdp_ip"), !name.hasPrefix("utun"), !name.hasPrefix("ipsec") else { continue }
 
             var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
             guard getnameinfo(address, socklen_t(address.pointee.sa_len),
                               &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST) == 0 else { continue }
 
-            let octets = String(cString: host).split(separator: ".")
-            if octets.count == 4 { return octets[0..<3].joined(separator: ".") }
+            let ip = String(cString: host)
+            guard isPrivate(ip), let subnet = Self.prefix(of: ip), !prefixes.contains(subnet) else { continue }
+            prefixes.append(subnet)
         }
-        return nil
+        return prefixes
+    }
+
+    nonisolated private static func isPrivate(_ ip: String) -> Bool {
+        let o = ip.split(separator: ".").compactMap { Int($0) }
+        guard o.count == 4 else { return false }
+        return o[0] == 10 || (o[0] == 192 && o[1] == 168) || (o[0] == 172 && (16...31).contains(o[1]))
     }
 }

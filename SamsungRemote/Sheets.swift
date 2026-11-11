@@ -30,7 +30,7 @@ struct SettingsView: View {
                         }
                     }
                     Button {
-                        Task { await discovery.scan() }
+                        Task { await discovery.scan(knownIP: tv.ipAddress) }
                     } label: {
                         HStack {
                             Text(discovery.isScanning ? "Searching your Wi‑Fi…" : "Search for TVs")
@@ -90,7 +90,7 @@ struct SettingsView: View {
         }
         .onAppear {
             ipDraft = tv.ipAddress
-            if discovery.found.isEmpty { Task { await discovery.scan() } }
+            if discovery.found.isEmpty { Task { await discovery.scan(knownIP: tv.ipAddress) } }
         }
         .onChange(of: discovery.found) { tvs in
             // Only one TV on the network and none set up yet: connect to it straight away.

@@ -129,7 +129,7 @@ struct ContentView: View {
 
     /// If the router gave the TV a new IP, find it again and reconnect.
     private func followTVToNewAddress() async {
-        await discovery.scan()
+        await discovery.scan(knownIP: tv.ipAddress)
         let candidates = discovery.found.filter { $0.ip != tv.ipAddress }
         let match = candidates.first { $0.name == tv.tvName } ?? (discovery.found.count == 1 ? candidates.first : nil)
         if let match {
