@@ -2,7 +2,9 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var tv: TVController
+    @EnvironmentObject var discovery: TVDiscovery
     @Environment(\.scenePhase) private var scenePhase
+    @State private var triedRediscovery = false
 
     @State private var showSettings = false
     @State private var showNumbers = false
@@ -77,6 +79,18 @@ struct ContentView: View {
         .onAppear {
             if tv.isConfigured { tv.connect() } else { showSettings = true }
         }
+        .onChange(of: tv.status) { status in
+            switch status {
+            case .connected:
+                triedRediscovery = false
+            case .failed:
+                guard !triedRediscovery, tv.isConfigured else { return }
+                triedRediscovery = true
+                Task { await followTVToNewAddress() }
+            default:
+                break
+            }
+        }
         .onChange(of: scenePhase) { phase in
             switch phase {
             case .active: if tv.isConfigured { tv.connect() }
@@ -111,6 +125,17 @@ struct ContentView: View {
             }
         }
         .foregroundStyle(.white)
+    }
+
+    /// If the router gave the TV a new IP, find it again and reconnect.
+    private func followTVToNewAddress() async {
+        await discovery.scan()
+        let candidates = discovery.found.filter { $0.ip != tv.ipAddress }
+        let match = candidates.first { $0.name == tv.tvName } ?? (discovery.found.count == 1 ? candidates.first : nil)
+        if let match {
+            tv.ipAddress = match.ip
+            tv.reconnect()
+        }
     }
 
     private var statusColor: Color {

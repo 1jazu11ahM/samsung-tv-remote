@@ -12,6 +12,7 @@
 		A10000000000000000000003 /* TVController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* TVController.swift */; };
 		A10000000000000000000004 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* Components.swift */; };
 		A10000000000000000000005 /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* Sheets.swift */; };
+		A10000000000000000000006 /* TVDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* TVDiscovery.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +23,7 @@
 		A20000000000000000000005 /* Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sheets.swift; sourceTree = "<group>"; };
 		A20000000000000000000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A20000000000000000000007 /* SamsungRemote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SamsungRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000008 /* TVDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVDiscovery.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +53,7 @@
 				A20000000000000000000003 /* TVController.swift */,
 				A20000000000000000000004 /* Components.swift */,
 				A20000000000000000000005 /* Sheets.swift */,
+				A20000000000000000000008 /* TVDiscovery.swift */,
 				A20000000000000000000006 /* Info.plist */,
 			);
 			path = SamsungRemote;
@@ -137,6 +140,7 @@
 				A10000000000000000000003 /* TVController.swift in Sources */,
 				A10000000000000000000004 /* Components.swift in Sources */,
 				A10000000000000000000005 /* Sheets.swift in Sources */,
+				A10000000000000000000006 /* TVDiscovery.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

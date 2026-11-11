@@ -2,12 +2,49 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var tv: TVController
+    @EnvironmentObject var discovery: TVDiscovery
     @Environment(\.dismiss) private var dismiss
     @State private var ipDraft = ""
 
     var body: some View {
         NavigationView {
             Form {
+                Section {
+                    ForEach(discovery.found) { found in
+                        Button {
+                            ipDraft = found.ip
+                            tv.ipAddress = found.ip
+                            tv.reconnect()
+                        } label: {
+                            HStack {
+                                Image(systemName: "tv")
+                                VStack(alignment: .leading) {
+                                    Text(found.name).foregroundStyle(.primary)
+                                    Text(found.ip).font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if found.ip == tv.ipAddress && tv.status == .connected {
+                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                                }
+                            }
+                        }
+                    }
+                    Button {
+                        Task { await discovery.scan() }
+                    } label: {
+                        HStack {
+                            Text(discovery.isScanning ? "Searching your Wi‑Fi…" : "Search for TVs")
+                            Spacer()
+                            if discovery.isScanning { ProgressView() }
+                        }
+                    }
+                    .disabled(discovery.isScanning)
+                } header: {
+                    Text("Find my TV")
+                } footer: {
+                    if let message = discovery.message { Text(message) }
+                }
+
                 Section {
                     TextField("e.g. 192.168.1.50", text: $ipDraft)
                         .keyboardType(.numbersAndPunctuation)
@@ -26,7 +63,7 @@ struct SettingsView: View {
                             .multilineTextAlignment(.trailing)
                     }
                 } header: {
-                    Text("TV IP address")
+                    Text("Or enter the IP address")
                 } footer: {
                     Text("On the TV: Settings → General → Network → Network Status → IP Settings. The first time you connect, the TV asks to allow “iPhone Remote” — choose Allow.")
                 }
@@ -51,7 +88,18 @@ struct SettingsView: View {
                 }
             }
         }
-        .onAppear { ipDraft = tv.ipAddress }
+        .onAppear {
+            ipDraft = tv.ipAddress
+            if discovery.found.isEmpty { Task { await discovery.scan() } }
+        }
+        .onChange(of: discovery.found) { tvs in
+            // Only one TV on the network and none set up yet: connect to it straight away.
+            if tvs.count == 1, !tv.isConfigured {
+                ipDraft = tvs[0].ip
+                tv.ipAddress = tvs[0].ip
+                tv.reconnect()
+            }
+        }
         .onChange(of: tv.status) { status in
             if status == .connected {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { dismiss() }
