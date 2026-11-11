@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -29,3 +32,12 @@ jobs:
         with:
           name: SamsungRemote-ipa
           path: SamsungRemote.ipa
+
+      - name: Publish to Releases (direct .ipa download link)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest SamsungRemote.ipa \
+            --title "TV Remote (latest build)" \
+            --notes "Download SamsungRemote.ipa and drag it into Sideloadly."
