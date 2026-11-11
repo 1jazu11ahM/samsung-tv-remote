@@ -1,0 +1,31 @@
+name: Build unsigned IPA
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build app (unsigned)
+        run: |
+          xcodebuild -project SamsungRemote.xcodeproj \
+            -target SamsungRemote \
+            -configuration Release \
+            -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: |
+          mkdir Payload
+          cp -R build/Release-iphoneos/SamsungRemote.app Payload/
+          zip -qr SamsungRemote.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SamsungRemote-ipa
+          path: SamsungRemote.ipa
